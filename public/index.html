@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Smart Home Break-In Mystery</title>
+<style>
+:root{--bg:#f4f6fa;--card:#fff;--tx:#18202b;--mu:#66707d;--ac:#1f6feb;--bd:#d8dee6;--ok:#1a7f37;--bad:#d1242f}
+@media (prefers-color-scheme:dark){:root{--bg:#11151b;--card:#1a2029;--tx:#e8ecf1;--mu:#97a1ae;--ac:#58a6ff;--bd:#2d3542;--ok:#3fb950;--bad:#f85149}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--tx);font:16px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+main{max-width:760px;margin:auto;padding:16px}h1{font-size:20px;margin:6px 0}
+.mu{color:var(--mu);font-size:14px}.card{background:var(--card);border:1px solid var(--bd);border-radius:14px;padding:16px;margin:12px 0}
+button,select,input,textarea{font:inherit;color:var(--tx);background:var(--card);border:1px solid var(--bd);border-radius:10px;padding:10px 14px}
+button{cursor:pointer}button.pri{background:var(--ac);color:#fff;border-color:var(--ac);font-weight:600}button:disabled{opacity:.45;cursor:not-allowed}
+textarea,input[type=text]{width:100%}.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:8px}
+label.it{display:flex;justify-content:space-between;gap:8px;padding:9px 10px;border:1px solid var(--bd);border-radius:10px;cursor:pointer}
+label.it.sel{border-color:var(--ac);background:rgba(31,111,235,.10)}
+.steps{display:flex;gap:6px;margin:8px 0}.steps i{flex:1;height:6px;border-radius:3px;background:var(--bd)}.steps i.on{background:var(--ac)}
+.coins{font-size:22px;font-weight:700}.over{color:var(--bad)}.ok{color:var(--ok)}
+.banner{background:var(--bad);color:#fff;border-radius:10px;padding:10px 14px;font-weight:700;margin-top:8px}
+.atk{border-color:var(--bad)}table{width:100%;border-collapse:collapse}td{padding:6px 4px;border-bottom:1px solid var(--bd)}td:last-child{text-align:right;font-weight:700}
+.pod{display:flex;gap:10px;align-items:flex-end;justify-content:center;margin:16px 0}.pod div{flex:1;text-align:center;border-radius:12px 12px 0 0;padding:10px 6px;color:#fff;font-weight:700}
+</style></head><body><main>
+<h1>🏠 Smart Home Break-In Mystery</h1><div class="steps" id="steps"></div><div id="v"></div>
+</main>
+<script>
+const STORE=[["PIR Motion Sensor",10,"Detects motion/presence"],["LDR",5,"Ambient light level"],["Door / Window Sensor",10,"Detects opening/closing"],["Temperature Sensor",10,"Measures temperature"],["Gas Sensor",15,"Detects gas concentration"],["ESP32",20,"Controller: sensing, logic, connectivity"],["Wi-Fi Connectivity",10,"Network/cloud communication"],["Cloud Storage",15,"Stores data, remote access"],["Buzzer",10,"Local audible alert"],["Smart Light",10,"Controlled lighting"],["Smart Fan",15,"Controlled fan output"],["Smart Lock",20,"Electronic door control"],["Camera",30,"Visual evidence / verification"],["Mobile Alert",15,"Notification to user"],["Water Flow Sensor",15,"Monitors abnormal water flow"],["Accelerometer",15,"Detects movement/fall patterns"]];
+const $=id=>document.getElementById(id),v=$("v");
+const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+async function api(p,b){const r=await fetch("/api/"+p,{method:b?"POST":"GET",headers:{"content-type":"application/json"},body:b?JSON.stringify(b):undefined});const d=await r.json();if(!r.ok)throw d;return d}
+let T=null,picks=[],poll=null;
+function steps(k){$("steps").innerHTML=[0,1,2,3].map(i=>`<i class="${i<=k?"on":""}"></i>`).join("")}
+function join(){steps(0);v.innerHTML=`<div class="card"><b>Step 1 · Join your team</b><p class="mu">Pick your team number. You will receive your team name and your challenge.</p><select id="tn" style="width:100%">${[...Array(12)].map((_,i)=>`<option value="${i+1}">Team ${i+1}</option>`).join("")}</select><p><button class="pri" id="j">Get my challenge ›</button></p></div>`;
+ 
+ $("j").onclick=async()=>{const n=+$("tn").value;try{T=await api("join",{n});route()}catch(e){alert(e.error||"error")}}}
+function route(){clearInterval(poll);if(T.stage>=3)return done();if(T.stage==2)return attack();challenge()}
+function challenge(){steps(0);picks=T.picks||[];
+ v.innerHTML=`<div class="card"><div class="mu">TEAM ${T.n}</div><h1 style="font-size:26px">${esc(T.name)}</h1></div>
+ <div class="card"><div class="mu">YOUR CHALLENGE</div><h2 style="margin:4px 0">${esc(T.caseTitle)}</h2><p>${esc(T.caseText)}</p></div>
+ <div class="card"><b>Step 2 · IoT Store</b> <span class="mu">— budget 100 SmartCoins</span><div class="coins" id="cn"></div><div id="bn"></div><div class="grid" id="g" style="margin-top:10px"></div>
+ <p><b>Main IF–THEN rule</b><br><span class="mu">e.g. IF door opens AND motion detected THEN send mobile alert</span></p><textarea id="ru" rows="2" placeholder="IF ... AND ... THEN ..."></textarea>
+ <p><button class="pri" id="nx" disabled>Next ▶ Surprise attack</button> <span class="mu" id="er"></span></p></div>`;
+ $("g").innerHTML=STORE.map((s,i)=>`<label class="it" data-i="${i}"><span><input type="checkbox" data-i="${i}"> <b>${s[0]}</b><br><span class="mu">${s[2]}</span></span><b>${s[1]}</b></label>`).join("");
+ const upd=()=>{const sp=picks.reduce((a,i)=>a+STORE[i][1],0);$("cn").innerHTML=`<span class="${sp>100?"over":""}">${sp}</span> / 100 coins spent · ${100-sp>=0?100-sp+" left":""}`;
+  $("bn").innerHTML=sp>100?`<div class="banner">⚠ OVER BUDGET by ${sp-100} coins — remove something</div>`:"";
+  $("nx").disabled=sp>100||!picks.length;document.querySelectorAll("label.it").forEach(l=>{const on=picks.includes(+l.dataset.i);l.classList.toggle("sel",on);l.querySelector("input").checked=on})};
+ $("g").onchange=e=>{const i=+e.target.dataset.i;picks=e.target.checked?[...picks,i]:picks.filter(x=>x!=i);upd()};upd();
+ $("nx").onclick=async()=>{$("nx").disabled=true;try{T=await api("store",{n:T.n,picks,rule:$("ru").value});T=await api("attack",{n:T.n});attack()}catch(e){$("er").textContent=e.error||"error";upd()}}}
+function attack(){steps(2);
+ v.innerHTML=`<div class="card"><b>✅ Store locked in</b><div class="mu">${esc(T.fb.store||"")}</div></div>
+ <div class="card atk"><div class="mu">⚡ SURPRISE ATTACK</div><h2 style="margin:4px 0">${esc(T.attack.title)}</h2><p style="font-size:18px">${esc(T.attack.text)}</p></div>
+ <div class="card"><b>Step 3 · What change will you make to your architecture?</b><p class="mu">Explain which components, decisions or rules change (sensor → ESP32 → connectivity → edge/cloud → decision → actuator). Be specific.</p>
+ <textarea id="ch" rows="6" placeholder="We will change …"></textarea><p><button class="pri" id="sb">Submit my design change</button> <span class="mu" id="er"></span></p></div>`;
+ $("sb").onclick=async()=>{const c=$("ch").value.trim();if(c.length<10){$("er").textContent="Write a fuller answer.";return}$("sb").disabled=true;try{T=await api("change",{n:T.n,change:c});done()}catch(e){$("er").textContent=e.error||"error";$("sb").disabled=false}}}
+function done(){steps(3);const m=T.m,tot=(m.sens||0)+(m.cost||0)+(m.rule||0)+(m.attack||0);
+ v.innerHTML=`<div class="card"><div class="mu">TEAM ${T.n} · ${esc(T.name)}</div><div class="coins" style="font-size:44px">${tot} / 100</div><div class="mu">Marks were assigned automatically.</div>
+ <table><tr><td>Sensor selection</td><td>${m.sens} / 40</td></tr><tr><td>Cost efficiency</td><td>${m.cost} / 10</td></tr><tr><td>IF–THEN rule</td><td>${m.rule} / 15</td></tr><tr><td>Attack response</td><td>${m.attack} / 35</td></tr></table></div>
+ <div class="card"><b>Feedback</b><p>${esc(T.fb.store||"")}<br>${esc(T.fb.rule||"")}<br>${esc(T.fb.attack||"")}${T.fb.missed?.length?"<br>Also consider: "+esc(T.fb.missed.join("; "))+".":""}<br>${esc(T.fb.spec||"")}</p></div><div id="res"></div>`;
+ const chk=async()=>{try{const r=await api("results");if(!r.reveal){$("res").innerHTML=`<div class="card mu">⏳ Waiting for your teacher to reveal the final results…</div>`;return}
+  clearInterval(poll);const c=["#d4a017","#8a94a0","#b0713a"],top=r.ranking.slice(0,3),o=[1,0,2].filter(i=>top[i]);
+  $("res").innerHTML=`<div class="card"><h2>🏆 Final Winners</h2><div class="pod">${o.map(i=>`<div style="background:${c[i]};padding-top:${i==0?40:i==1?24:12}px">${["🥇","🥈","🥉"][i]}<br>${esc(top[i].name)}<br>${top[i].total}/100</div>`).join("")}</div>
+  <table>${r.ranking.map((x,i)=>`<tr><td>${i+1}. ${esc(x.name)}${x.n==T.n?" (you)":""}</td><td>${x.total}</td></tr>`).join("")}</table></div>`}catch(e){}};
+ chk();poll=setInterval(chk,4000)}
+join();
+</script></body></html>
